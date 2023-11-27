@@ -1,62 +1,52 @@
-// Implement Shortest Job First (SJF) Scheduling
-func SJFSchedule(w io.Writer, title string, processes []Process) {
-	// Sort the processes by BurstDuration in ascending order
+package main
+
+import (
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+)
+
+// Process struct represents a process
+type Process struct {
+	ID            int
+	BurstDuration int
+	ArrivalTime   int
+	Priority      int
+}
+
+// ByBurstDuration implements sort.Interface for []Process based on BurstDuration
+type ByBurstDuration []Process
+
+func (a ByBurstDuration) Len() int           { return len(a) }
+func (a ByBurstDuration) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByBurstDuration) Less(i, j int) bool { return a[i].BurstDuration < a[j].BurstDuration }
+
+func main() {
+	// Parse input file
+	processes := readProcessesFromFile(os.Args[1])
+
+	// Sort processes by arrival time
 	sort.Slice(processes, func(i, j int) bool {
-		return processes[i].BurstDuration < processes[j].BurstDuration
+		return processes[i].ArrivalTime < processes[j].ArrivalTime
 	})
 
-	var (
-		serviceTime     int64
-		totalWait       float64
-		totalTurnaround float64
-		lastCompletion  float64
-		waitingTime     int64
-		schedule        = make([][]string, len(processes)
-		gantt           = make([]TimeSlice, 0)
-	)
+	// Implement SJF scheduling
+	sjfScheduling(processes)
 
-	for i := range processes {
-		if processes[i].ArrivalTime > serviceTime {
-			waitingTime = processes[i].ArrivalTime - serviceTime
-			serviceTime = processes[i].ArrivalTime
-		} else {
-			waitingTime = 0
-		}
+	// Output results
+	// You can calculate and print average turnaround time, average waiting time, and average throughput here
+}
 
-		totalWait += float64(waitingTime)
+func sjfScheduling(processes []Process) {
+	// Implement SJF (preemptive) scheduling logic here
+	// Keep track of time, execute processes, update waiting times, etc.
+}
 
-		start := serviceTime
-
-		turnaround := processes[i].BurstDuration + waitingTime
-		totalTurnaround += float64(turnaround)
-
-		completion := serviceTime + turnaround
-		lastCompletion = float64(completion)
-
-		schedule[i] = []string{
-			fmt.Sprint(processes[i].ProcessID),
-			fmt.Sprint(processes[i].Priority),
-			fmt.Sprint(processes[i].BurstDuration),
-			fmt.Sprint(processes[i].ArrivalTime),
-			fmt.Sprint(waitingTime),
-			fmt.Sprint(turnaround),
-			fmt.Sprint(completion),
-		}
-		serviceTime += processes[i].BurstDuration
-
-		gantt = append(gantt, TimeSlice{
-			PID:   processes[i].ProcessID,
-			Start: start,
-			Stop:  serviceTime,
-		})
-	}
-
-	count := float64(len(processes))
-	aveWait := totalWait / count
-	aveTurnaround := totalTurnaround / count
-	aveThroughput := count / lastCompletion
-
-	outputTitle(w, title)
-	outputGantt(w, gantt)
-	outputSchedule(w, schedule, aveWait, aveTurnaround, aveThroughput)
+func readProcessesFromFile(filename string) []Process {
+	// Implement logic to read processes from the file and return a slice of Process
+	// Each line in the file contains a record with comma-separated fields
+	// ProcessID, BurstDuration, ArrivalTime, Priority
+	// Hint: You can use the strconv.Atoi function to convert string to int
+	// You may want to create a Process struct and return a slice of Process
 }
