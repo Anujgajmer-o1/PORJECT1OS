@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sorts"
 	"strconv"
 	"strings"
 
@@ -127,13 +128,137 @@ func FCFSSchedule(w io.Writer, title string, processes []Process) {
 	outputSchedule(w, schedule, aveWait, aveTurnaround, aveThroughput)
 }
 
-//func SJFPrioritySchedule(w io.Writer, title string, processes []Process) { }
-//
-//func SJFSchedule(w io.Writer, title string, processes []Process) { }
-//
-//func RRSchedule(w io.Writer, title string, processes []Process) { }
 
-//endregion
+
+
+
+func SJFSchedule(w io.Writer, title string, processes []Process) { 
+
+	sort.Slice(processes, func(i,j int) bool {
+	
+	return processes[i].BrustDuration < processes[j].BrustDuration
+})
+	FCFSSchedule(w, title, processes)
+}
+
+func SJFPrioritySchedule(w io.Writer, title string, processes []Process) { 
+
+	sort.Slice(processes, func(i, j int) bool {
+		if processes[i].Priority == processes[j].Priority{
+		return processes [i].BrustDuration < processes[j].BrustDuration
+		}
+		return processes[i].Priority < Processes[j].Priority
+})
+	FCFSSchedule(w, title, processes)
+
+}
+	// SJFPrioritySchedule(os.Stdout, "Priority", processes)
+	RRSchedule(os.Stdout, "Round-robin", processes, 2) // Assuming quantum is 2 (change accordingly)
+}
+
+func openProcessingFile(args ...string) (*os.File, func(), error) {
+	if len(args) != 2 {
+		return nil, nil, fmt.Errorf("%w: must give a scheduling file to process", ErrInvalidArgs)
+	}
+	// Read in CSV process CSV file
+	f, err := os.Open(args[1])
+	if err != nil {
+		return nil, nil, fmt.Errorf("%v: error opening scheduling file", err)
+	}
+	closeFn := func() {
+		if err := f.Close(); err != nil {
+			log.Fatalf("%v: error closing scheduling file", err)
+		}
+	}
+
+	return f, closeFn, nil
+}
+
+type (
+	Process struct {
+		ProcessID     int64
+		ArrivalTime   int64
+		BurstDuration int64
+		Priority      int64
+	}
+	TimeSlice struct {
+		PID   int64
+		Start int64
+		Stop  int64
+	}
+)
+
+// ... (FCFSSchedule and other functions remain unchanged)
+
+// RRSchedule implements Round Robin scheduling
+func RRSchedule(w io.Writer, title string, processes []Process, quantum int64) {
+	var (
+		queue           []Process
+		currentTime     int64
+		schedule        [][]string
+		gantt           []TimeSlice
+		totalWait       float64
+		totalTurnaround float64
+	)
+
+	for len(processes) > 0 || len(queue) > 0 {
+		if len(queue) == 0 {
+			currentTime = processes[0].ArrivalTime
+		}
+
+		for len(processes) > 0 && processes[0].ArrivalTime <= currentTime {
+			queue = append(queue, processes[0])
+			processes = processes[1:]
+		}
+
+		if len(queue) > 0 {
+			process := queue[0]
+			queue = queue[1:]
+
+			start := currentTime
+			waitingTime := start - process.ArrivalTime
+			totalWait += float64(waitingTime)
+
+			runTime := min(quantum, process.BurstDuration)
+			currentTime += runTime
+			process.BurstDuration -= runTime
+
+			turnaround := currentTime - process.ArrivalTime
+			totalTurnaround += float64(turnaround)
+
+			schedule = append(schedule, []string{
+				fmt.Sprint(process.ProcessID),
+				fmt.Sprint(process.Priority),
+				fmt.Sprint(runTime),
+				fmt.Sprint(process.ArrivalTime),
+				fmt.Sprint(waitingTime),
+				fmt.Sprint(turnaround),
+				fmt.Sprint(currentTime),
+			})
+
+			gantt = append(gantt, TimeSlice{
+				PID:   process.ProcessID,
+				Start: start,
+				Stop:  currentTime,
+			})
+
+			if process.BurstDuration > 0 {
+				queue = append(queue, process)
+			}
+		}
+	}
+
+	count := float64(len(schedule))
+	aveWait := totalWait / count
+	aveTurnaround := totalTurnaround / count
+	aveThroughput := count / float64(currentTime)
+
+	outputTitle(w, title)
+	outputGantt(w, gantt)
+	outputSchedule(w, schedule, aveWait, aveTurnaround, aveThroughput)
+}
+
+	//endregion
 
 //region Output helpers
 
